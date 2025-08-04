@@ -1,21 +1,30 @@
+import { Suspense } from 'react';
+import { notFound } from 'next/navigation';
 import { getProductById } from '@/components/services/getProduct.service';
-import ProductGallery from '@/components/product/ProductGallery';
-import ProductDetails from '@/components/product/ProductDetails';
-import SellerInfo from '@/components/product/SellerInfo';
-import Reviews from '@/components/product/Reviews';
-import MoreFromSeller from '@/components/product/MoreFromSeller';
-import OtherProducts from '@/components/product/OtherProducts';
-import ContactSellerHeader from '@/components/product/ContactSellerHeader';
-import Link from 'next/link';
 import { decryptId } from '@/utils/encryption';
+import ProductPageClient from './ProductPageClient';
 
-export const dynamic = 'force-dynamic';
+// A skeleton loader to show while the page is being generated on the server.
+const LoadingSkeleton = () => (
+  <div className="mx-auto px-4 sm:px-6 lg:px-20 py-6 bg-white max-w-screen-2xl animate-pulse">
+    <div className="h-6 bg-gray-200 rounded w-1/4 mb-6"></div>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 mb-10">
+      <div className="bg-gray-200 rounded-lg h-96"></div>
+      <div className="space-y-4">
+        <div className="h-8 bg-gray-200 rounded w-3/4"></div>
+        <div className="h-10 bg-gray-200 rounded w-1/2"></div>
+        <div className="h-24 bg-gray-200 rounded"></div>
+        <div className="h-12 bg-gray-200 rounded"></div>
+      </div>
+    </div>
+  </div>
+);
 
 export default async function ProductPage({ params }) {
   const encryptedProductId = params?.productId;
 
   if (!encryptedProductId) {
-    return <div className="text-center py-20 text-red-500">Invalid product ID.</div>;
+    notFound(); // Use Next.js notFound for invalid routes
   }
 
   let productId;
@@ -24,60 +33,31 @@ export default async function ProductPage({ params }) {
     productId = decryptId(decoded);
   } catch (err) {
     console.error("Failed to decrypt product ID:", err);
-    return <div className="text-center py-20 text-red-500">Invalid or corrupted product ID.</div>;
+    notFound();
   }
 
   if (!productId || isNaN(Number(productId))) {
-    return <div className="text-center py-20 text-red-500">Invalid product ID.</div>;
+    notFound();
   }
 
   let productData;
   try {
+    // Fetch the product data on the server
     productData = await getProductById(productId);
-  } catch {
-    return <div className="text-center py-20 text-gray-500">Product not found or failed to load.</div>;
+    if (!productData) {
+      // If the service returns null/undefined for a valid ID
+      notFound();
+    }
+  } catch (error) {
+    console.error("API error fetching product:", error);
+    // You could render a specific error page here if desired
+    return <div className="text-center py-20 text-red-500">Could not load the product. Please try again later.</div>;
   }
 
   return (
-    <div className="mx-auto px-4 sm:px-6 lg:px-20 py-6 bg-white text-black max-w-screen-2xl">
-      {/* Breadcrumb */}
-      <div className="flex items-center text-gray-500 mb-6 text-sm sm:text-base">
-        <Link href="/" className="hover:text-black">Home</Link>
-        <svg className="mx-2" width="16" height="16" viewBox="0 0 20 21" fill="none">
-          <path
-            fillRule="evenodd"
-            clipRule="evenodd"
-            d="M6.98558 5.06864C7.32339 4.7931 7.8211 4.8128 8.13643 5.12775L13.0048 9.99638C13.1679 10.1596 13.2563 10.3779 13.2563 10.6044C13.2563 10.8309 13.1681 11.0488 13.0048 11.2127L8.13633 16.0811C7.80004 16.417 7.2557 16.417 6.92029 16.0811C6.58388 15.7451 6.58388 15.2006 6.92019 14.8648L11.1802 10.6044L6.92029 6.34407C6.60492 6.02908 6.5852 5.53088 6.86112 5.19302L6.92025 5.12769L6.98558 5.06864Z"
-            fill="#343A40"
-          />
-        </svg>
-        <span className="text-orange-500">Detail</span>
-      </div>
-
-      {/* Product Gallery and Details */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-12 mb-10">
-        <ProductGallery product={productData} />
-        <ProductDetails product={productData} />
-      </div>
-
-      <ContactSellerHeader />
-
-      {/* Seller Info and Reviews */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
-  <div className="lg:col-span-1">
-    <SellerInfo sellerId={productData.userId} />
-  </div>
-  <div className="lg:col-span-2">
-    <Reviews
-      sellerId={productData.userId}
-      productId={productData.productId}
-    />
-  </div>
-</div>
-
-
-      <MoreFromSeller sellerId={productData.userId} />
-      <OtherProducts categoryId={productData.mainCategoryId} />
-    </div>
+    <Suspense fallback={<LoadingSkeleton />}>
+      {/* Pass the server-fetched data as a prop to the client component */}
+      <ProductPageClient productData={productData} />
+    </Suspense>
   );
 }
