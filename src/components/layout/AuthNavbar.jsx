@@ -1,5 +1,4 @@
-"use client";
-
+'use client'
 import { useState, useEffect, useRef } from "react";
 import LocationDropdown from "./navbar/LocationDropdown";
 import SearchBar from "./navbar/SearchBar";
@@ -10,8 +9,9 @@ import { useSession, signOut } from "next-auth/react";
 import ImageScanModal from "./navbar/ImageScanModal";
 import ConfirmLogout from "./navbar/Confirmlogout";
 import { encryptId } from "@/utils/encryption";
-import { Heart, Bell, Menu, X, ChevronDown, Search } from "lucide-react"; // Import Search icon
-import { parseJwt, fetchAllNotifications } from '@/components/services/notification.service';
+import { Heart, Bell, Menu, X, ChevronDown, Search } from "lucide-react";
+// Make sure this path is correct for your project structure
+import {fetchAllNotifications} from "../services/notification.service"
 import { fetchUserProfile } from "../services/userprofile.service";
 
 export default function AuthNavbar() {
@@ -58,14 +58,8 @@ export default function AuthNavbar() {
     { name: "Other", key: "other" },
   ];
     const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
- // sreypov-hout/resellkh_/resellkh_-Seangly/src/components/layout/AuthNavbar.jsx
-
-  // ... (imports and other state variables remain the same)
-
   useEffect(() => {
     const loadUser = async () => {
-      // FIX: Only fetch the user profile if the session is authenticated 
-      // and we have the necessary data.
       if (status === "authenticated" && session?.user?.id && session?.accessToken) {
         try {
           const userId = session.user.id;
@@ -78,18 +72,13 @@ export default function AuthNavbar() {
             avatar: profileData.profileImage || DEFAULT_AVATAR_URL,
           });
           
-          // These are good for keeping localStorage in sync, but TokenStorage.js handles this.
-          // You can keep them or remove them for cleanliness.
           localStorage.setItem("token", token);
           localStorage.setItem("userId", String(session.user.id));
         } catch (err) {
           console.error("Failed to load user profile:", err);
-          // If fetching fails (e.g., token expired), sign the user out.
           signOut();
         }
       } else if (status === "unauthenticated") {
-        // FIX: If unauthenticated, ensure user state is cleared, and local storage is clean.
-        // This prevents using stale data.
         setUser(null);
         localStorage.removeItem("token");
         localStorage.removeItem("userId");
@@ -97,9 +86,7 @@ export default function AuthNavbar() {
     };
 
     loadUser();
-  }, [session, status]); // The dependencies correctly re-run this logic when session changes.
-
-  // ... (the rest of your component remains the same)
+  }, [session, status]);
   
   useEffect(() => {
     const handleProfileUpdate = (event) => {
@@ -113,25 +100,61 @@ export default function AuthNavbar() {
       window.removeEventListener('profile-updated', handleProfileUpdate);
     };
   }, []);
+  
+  const handleAuthError = () => {
+    if (isSigningOut.current) return;
+    isSigningOut.current = true;
+    console.warn("Session expired. Signing out.");
+    localStorage.clear();
+    signOut({ callbackUrl: "/login?session_expired=true" });
+  };
+  
+  const checkUnread = async () => {
+    // Prevent check if session or user is not ready
+    if (!session?.accessToken || !user?.id) return;
 
-  useEffect(() => {
-    if (!user || !session?.accessToken) {
-      setCartItemCount(0);
-      setHasUnread(false);
-      return;
+    try {
+      const allNotifications = await fetchAllNotifications(session.accessToken, user.id);
+      if (allNotifications) {
+        const unreadExists = allNotifications.some(n => !n.isRead);
+        setHasUnread(unreadExists);
+      }
+    } catch (err) {
+      console.error('Error checking unread notifications:', err);
+      if (err.status === 401) {
+        handleAuthError();
+      }
     }
+  };
 
-    isSigningOut.current = false;
+  // Run the check when the user/session first loads
+  useEffect(() => {
+    if (user && session) {
+        isSigningOut.current = false;
+        checkUnread();
+    } else {
+        setHasUnread(false);
+    }
+  }, [user, session]);
 
-    const handleAuthError = () => {
-      if (isSigningOut.current) return;
-      isSigningOut.current = true;
-      console.warn("Session expired. Signing out.");
-      localStorage.clear();
-      signOut({ callbackUrl: "/login?session_expired=true" });
+
+  // ✨ THIS IS THE MISSING PIECE ✨
+  // This effect listens for the update event from the notifications page.
+  useEffect(() => {
+    const handleNotificationsUpdate = () => {
+      console.log("Navbar heard that notifications were updated. Re-checking status...");
+      checkUnread();
     };
-  }
-  )
+
+    // Listen for the custom event
+    window.addEventListener('notifications-updated', handleNotificationsUpdate);
+
+    // Cleanup: remove the event listener when the component unmounts
+    return () => {
+      window.removeEventListener('notifications-updated', handleNotificationsUpdate);
+    };
+  }, [user, session]); // Dependencies ensure `checkUnread` has the latest data
+  // ✨ END OF THE FIX ✨
 
 
   useEffect(() => {
