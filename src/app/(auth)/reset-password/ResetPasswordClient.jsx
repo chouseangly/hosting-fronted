@@ -8,7 +8,7 @@ import Input from "@/components/ui/Input";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-export default function ResetPassword() {
+export default function ResetPasswordClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email");
@@ -60,18 +60,16 @@ export default function ResetPassword() {
       });
 
       const text = await response.text();
-      console.log("Server Response:", text);
-
       const data = text ? JSON.parse(text) : {};
+
       if (!response.ok) {
         throw new Error(data.message || "Failed to reset password.");
       }
 
-      toast.success(" Password updated successfully! Redirecting...");
+      toast.success("Password updated successfully! Redirecting...");
       setTimeout(() => {
         router.push("/login");
       }, 2000);
-
     } catch (err) {
       console.error("Error resetting password:", err);
       toast.error(err.message || "Something went wrong.");
@@ -87,8 +85,12 @@ export default function ResetPassword() {
       <Toaster position="bottom-right" />
       <div className="min-h-screen flex flex-col md:flex-row items-center justify-center bg-white px-[150px]">
         {/* Left Image */}
-        <div className="hidden md:flex w-1/2 justify-between ">
-          <img src="/images/auth/create new password.jpg" alt="Reset Password" className="w-[400px]" />
+        <div className="hidden md:flex w-1/2 justify-between">
+          <img
+            src="/images/auth/create new password.jpg"
+            alt="Reset Password"
+            className="w-[400px]"
+          />
         </div>
 
         {/* Right Form */}
