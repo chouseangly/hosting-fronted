@@ -3,8 +3,10 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
-export default function OTPVerification() {
+
+export default function VerifyForgotPasswordClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const email = searchParams.get("email");
@@ -35,6 +37,15 @@ export default function OTPVerification() {
       setOtp(newOtp);
       if (value && index < 5) {
         document.getElementById(`otp-${index + 1}`)?.focus();
+      }
+    }
+  };
+
+  const handleKeyDown = (e, index) => {
+    if (e.key === "Backspace" && otp[index] === "") {
+      if (index > 0) {
+        const prev = document.getElementById(`otp-${index - 1}`);
+        if (prev) prev.focus();
       }
     }
   };
@@ -104,21 +115,13 @@ export default function OTPVerification() {
       setIsResending(false);
     }
   };
-    const handleKeyDown = (e, index) => {
-  if (e.key === "Backspace" && otp[index] === "") {
-    if (index > 0) {
-      const prev = document.getElementById(`otp-${index - 1}`);
-      if (prev) prev.focus();
-    }
-  }
-};
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row items-center justify-center bg-white px-4 sm:px-8 md:px-12 lg:px-[210px] py-12 gap-10">
       {/* Left Image */}
       <div className="hidden md:flex lg:w-1/2 justify-center">
         <img
-          src="/images/auth/verify OTP.jpg" 
+          src="/images/auth/verify OTP.jpg"
           alt="OTP Illustration"
           className="w-full max-w-[400px] h-auto"
         />
@@ -134,19 +137,19 @@ export default function OTPVerification() {
 
         <div className="flex justify-center gap-3">
           {otp.map((digit, idx) => (
-        <input
-          key={idx}
-          id={`otp-${idx}`}
-          type="text"
-          inputMode="numeric"
-          maxLength="1"
-          value={digit}
-          onChange={(e) => handleChange(e.target.value, idx)}
-          onKeyDown={(e) => handleKeyDown(e, idx)}
-          onPaste={idx === 0 ? handlePaste : undefined}
-          className="w-12 h-12 border-b-2 text-center text-xl outline-none focus:border-orange-500 transition"
-        />
-      ))}
+            <input
+              key={idx}
+              id={`otp-${idx}`}
+              type="text"
+              inputMode="numeric"
+              maxLength="1"
+              value={digit}
+              onChange={(e) => handleChange(e.target.value, idx)}
+              onKeyDown={(e) => handleKeyDown(e, idx)}
+              onPaste={idx === 0 ? handlePaste : undefined}
+              className="w-12 h-12 border-b-2 text-center text-xl outline-none focus:border-orange-500 transition"
+            />
+          ))}
         </div>
 
         <p className="text-orange-500 text-sm font-medium">
