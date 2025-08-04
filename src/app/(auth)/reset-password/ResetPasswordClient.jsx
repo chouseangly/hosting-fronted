@@ -1,4 +1,5 @@
-'use client';
+// app/(auth)/reset-password/ResetPasswordClient.jsx
+'use client'; // ✅ This must be first
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -158,3 +159,4 @@ export default function ResetPasswordClient() {
     </>
   );
 }
+
